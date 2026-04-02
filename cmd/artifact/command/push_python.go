@@ -87,42 +87,54 @@ func NewPushPythonCmd(c *cmdutils.Factory) *cobra.Command {
 
 			progress.Success("Input parameters validated")
 
-			progress.Step("Preparing python upload jobs")
-			jobs := make([]upload.FileUploadJob, 0, len(pythonPkgFiles))
-			for _, fileNameWithPath := range pythonPkgFiles {
-				metadata, err := extractPythonPackageMetadata(fileNameWithPath)
-				if err != nil {
-					return fmt.Errorf("failed to extract metadata from %s: %w", filepath.Base(fileNameWithPath), err)
+			if len(pythonPkgFiles) > 1 {
+				progress.Step("Preparing python upload jobs")
+				jobs := make([]upload.FileUploadJob, 0, len(pythonPkgFiles))
+				for _, fileNameWithPath := range pythonPkgFiles {
+					progress.Step(fmt.Sprintf("Processing job for %s ", filepath.Base(fileNameWithPath)))
+					metadata, err := extractPythonPackageMetadata(fileNameWithPath)
+					if err != nil {
+						return fmt.Errorf("failed to extract metadata from %s: %w", filepath.Base(fileNameWithPath), err)
+					}
+
+					fileInfo, err := os.Stat(fileNameWithPath)
+					if err != nil {
+						return fmt.Errorf("failed to stat file %s: %w", fileNameWithPath, err)
+					}
+
+					job := upload.NewPythonUploadJob(
+						fileNameWithPath,
+						registryName,
+						metadata.Name,
+						metadata.Version,
+						fileInfo.Size(),
+					)
+					jobs = append(jobs, job)
 				}
 
-				fileInfo, err := os.Stat(fileNameWithPath)
-				if err != nil {
-					return fmt.Errorf("failed to stat file %s: %w", fileNameWithPath, err)
+				progress.Success(fmt.Sprintf("Prepared %d upload jobs", len(jobs)))
+
+				// uploading concurrently
+				engine := upload.NewFileUploadEngine(maxConcurrentUploads, progress)
+				results := engine.Execute(context.Background(), jobs)
+
+				//error fail check
+				if upload.HasUploadErrors(results) {
+					uploadErrors := upload.GetUploadErrors(results)
+					for jobID, err := range uploadErrors {
+						progress.Error(fmt.Sprintf("Failed to upload %s: %v", jobID, err))
+					}
+					return fmt.Errorf("failed to upload %d files", len(uploadErrors))
 				}
-
-				job := upload.NewPythonUploadJob(
-					fileNameWithPath,
-					registryName,
-					metadata.Name,
-					metadata.Version,
-					fileInfo.Size(),
-				)
-				jobs = append(jobs, job)
-			}
-
-			progress.Success(fmt.Sprintf("Prepared %d upload jobs", len(jobs)))
-
-			// uploading concurrently
-			engine := upload.NewFileUploadEngine(maxConcurrentUploads, progress)
-			results := engine.Execute(context.Background(), jobs)
-
-			//error fail check
-			if upload.HasUploadErrors(results) {
-				uploadErrors := upload.GetUploadErrors(results)
-				for jobID, err := range uploadErrors {
-					progress.Error(fmt.Sprintf("Failed to upload %s: %v", jobID, err))
+			} else {
+				//this loop execute once only
+				for _, fileNameWithPath := range pythonPkgFiles {
+					progress.Step(fmt.Sprintf("Processing %s ", filepath.Base(fileNameWithPath)))
+					err := uploadSinglePythonPackageFile(fileNameWithPath, registryName, progress)
+					if err != nil {
+						return err
+					}
 				}
-				return fmt.Errorf("failed to upload %d files", len(uploadErrors))
 			}
 
 			progress.Success(fmt.Sprintf("Successfully uploaded package %s", filePath))

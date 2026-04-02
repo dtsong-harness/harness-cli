@@ -149,6 +149,7 @@ func NewPushMavenCmd(c *cmdutils.Factory) *cobra.Command {
 
 			// Adding files to upload in jobs
 			for _, fileNameWithPath := range mavenFilesToUpload {
+				progress.Step(fmt.Sprintf("Processing job for %s ", filepath.Base(fileNameWithPath)))
 				fileInfo, err := os.Stat(fileNameWithPath)
 				if err != nil {
 					return errors.NewValidationError("FILE_ERROR", fmt.Sprintf("Failed to stat file: %v", err))
@@ -168,6 +169,7 @@ func NewPushMavenCmd(c *cmdutils.Factory) *cobra.Command {
 			}
 
 			// Add checksum upload jobs
+			progress.Step("preparing job for checksum files ")
 			for _, checksumFile := range checksumFiles {
 				job := upload.NewMavenUploadJobFromMemory(
 					checksumFile.FileName,

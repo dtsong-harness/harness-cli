@@ -57,7 +57,7 @@ func NewMavenUploadJobFromMemory(fileName, registryName, groupID, artifactID, ve
 	}
 }
 
-// Upload performs the Maven artifact upload
+// performs the Maven artifact upload
 func (j *MavenUploadJob) Upload(ctx context.Context) error {
 	pkgClient, err := pkgclient.NewClientWithResponses(config.Global.Registry.PkgURL,
 		auth.GetAuthOptionARPKG())
