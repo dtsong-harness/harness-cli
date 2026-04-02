@@ -1,7 +1,10 @@
 // Package progress provides progress reporting functionality
 package progress
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 // Reporter defines the interface for reporting progress.
 // It provides methods to report different stages of an operation
@@ -24,7 +27,9 @@ type Reporter interface {
 }
 
 // ConsoleReporter implements Reporter by printing messages to console
-type ConsoleReporter struct{}
+type ConsoleReporter struct {
+	mu sync.Mutex
+}
 
 // NewConsoleReporter creates a new ConsoleReporter
 func NewConsoleReporter() *ConsoleReporter {
@@ -32,18 +37,26 @@ func NewConsoleReporter() *ConsoleReporter {
 }
 
 func (r *ConsoleReporter) Start(message string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	fmt.Printf("⚡ %s...\n", message)
 }
 
 func (r *ConsoleReporter) Step(message string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	fmt.Printf("  ▶ %s...\n", message)
 }
 
 func (r *ConsoleReporter) Error(message string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	fmt.Printf("  ❌ %s\n", message)
 }
 
 func (r *ConsoleReporter) Success(message string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	fmt.Printf("  ✅ %s\n", message)
 }
 
