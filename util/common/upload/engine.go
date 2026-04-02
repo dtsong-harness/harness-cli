@@ -37,7 +37,7 @@ func (e *FileUploadEngine) Execute(ctx context.Context, jobs []FileUploadJob) []
 		numWorkers = len(jobs)
 	}
 
-	e.progress.Step(fmt.Sprintf("Starting upload: %d files with %d workers", len(jobs), numWorkers))
+	e.progress.Step(fmt.Sprintf("Starting upload: %d files with %d workers. Please wait ....", len(jobs), numWorkers))
 
 	startTime := time.Now()
 	jobChan := make(chan FileUploadJob, len(jobs))
